@@ -17,32 +17,32 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// Image to display.
 		/// </summary>
-		[SerializeField]
+		[SerializeField, Tooltip("Texture to display")]
 		private Texture2D image;
 		/// <summary>
 		/// How many pixels in the image should be taken as one meter in world space?
 		/// </summary>
-		[SerializeField]
+		[SerializeField, Tooltip("How many pixels in the image should be taken as one meter in world space?")]
 		private float pixelsPerMeter;
 		/// <summary>
-		/// Where transform gimbal will be. (0, 0) is bottom left, (1, 1) is top right.
+		/// Where transform anchor will be. (0, 0) is bottom left, (1, 1) is top right.
 		/// </summary>
-		[SerializeField]
+		[SerializeField, Tooltip("Where transform anchor will be. (0, 0) is bottom left, (1, 1) is top right.")]
 		private Vector2 anchorPoint;
 		/// <summary>
 		/// Material to use for rendering image. Material will be copied on use, image will be applied to shader's main texture.
 		/// </summary>
-		[SerializeField]
+		[SerializeField, Tooltip(" Material to use for rendering image. " +
+			"Material will be copied on use, image will be applied to shader's main texture.")]
 		private Material material;
 		/// <summary>
 		/// Can object only be seen from the front?
 		/// </summary>
-		[SerializeField]
+		[SerializeField, Tooltip("Can object only be seen from the front?")]
 		private bool oneSided;
 		/// <summary>
 		/// Image to display.
 		/// </summary>
-		[SerializeField]
 		public Texture2D Image
 		{
 			get => image;
@@ -51,7 +51,6 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// How many pixels in the image should be taken as one meter in world space?
 		/// </summary>
-		[SerializeField]
 		public float PixelsPerMeter
 		{
 			get => PixelsPerMeter;
@@ -63,7 +62,6 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// Where transform gimbal will be. (0, 0) is bottom left, (1, 1) is top right.
 		/// </summary>
-		[SerializeField]
 		public Vector2 AnchorPoint
 		{
 			get => anchorPoint;
@@ -75,8 +73,7 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// Material to use for rendering image. Material will be copied on use, image will be applied to shader's main texture.
 		/// </summary>
-		[SerializeField]
-		private Material Material
+		public Material Material
 		{
 			get => material;
 			set
@@ -88,7 +85,7 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// Should the plane cast shadows?
 		/// </summary>
-		[SerializeField]
+		[SerializeField, Tooltip("How should shadows be handled?")]
 		private ShadowCastingMode castShadows;
 
 		// These classes must be referenced to prevent build errors with CreatePrimitive.
@@ -97,12 +94,15 @@ namespace dninosores.UnityPlaneRenderer
 		private BoxCollider insuranceBox;
 		private SphereCollider insuranceSphere;
 
-		[SerializeField, ReadOnly]
+		[SerializeField, ReadOnly, Tooltip("GameObject used for the front plane")]
 		private GameObject front;
-		[SerializeField, ReadOnly]
+		[SerializeField, ReadOnly, Tooltip("GameObject used for the back plane")]
 		private GameObject back;
 
 
+		/// <summary>
+		/// Creates a colliderless Quad with the given name as a child of this GameObject.
+		/// </summary>
 		private GameObject CreateQuad(string name)
 		{
 			GameObject o = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -114,6 +114,9 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Destroys a GameObject's material and resets its rotation.
+		/// </summary>
 		private void Clean(GameObject o)
 		{
 			SafeDestroy(o.GetComponent<Renderer>().sharedMaterial);
@@ -121,6 +124,9 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Destroys all children of this GameObject that aren't the front or back quads.
+		/// </summary>
 		private void CleanChildren()
 		{
 			foreach (Transform child in transform)
@@ -135,6 +141,10 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Sets the GameObject's texture to be the given image.
+		/// </summary>
+		/// <param name="o"></param>
 		private void SetTexture(GameObject o)
 		{
 			Renderer rend = o.GetComponent<Renderer>();
@@ -143,6 +153,9 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Recalculates the front and back quads.
+		/// </summary>
 		[ContextMenu("Recalculate")]
 		private void Recalculate()
 		{
@@ -187,6 +200,9 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Recalculates the dimensions of the front and back quads, assuming they already exist.
+		/// </summary>
 		private void RecalculateDimensions()
 		{
 			float width = image.width / pixelsPerMeter;
@@ -221,6 +237,9 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Recalculates dimensions when editor values change.
+		/// </summary>
 		void OnValidate()
 		{
 			if (pixelsPerMeter <= 0)
@@ -234,6 +253,10 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
+		/// <summary>
+		/// Calls appropriate destroy method depending on whether game is running or not.
+		/// </summary>
+		/// <param name="go"></param>
 		private void SafeDestroy(UnityEngine.Object go)
 		{
 			if (go == null)
