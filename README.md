@@ -1,4 +1,4 @@
-# UnityPlaneRenderer
+# Unity Plane Renderer
 Unity component that simplifies rendering images in 3D space.
 
 ## Features
