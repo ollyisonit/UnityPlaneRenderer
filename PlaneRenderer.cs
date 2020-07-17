@@ -1,6 +1,7 @@
 ﻿#pragma warning disable 0649
 
 using dninosores.UnityEditorAttributes;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -10,9 +11,9 @@ namespace dninosores.UnityPlaneRenderer
 	/// <summary>
 	/// Renders a two-dimensional image to a plane using given material as base.
 	/// </summary>
+	[ExecuteInEditMode, DisallowMultipleComponent]
 	public class PlaneRenderer : MonoBehaviour
 	{
-		private const float OFFSET = 0.032f;
 
 		[SerializeField, Tooltip("Texture to display on front")]
 		private Texture2D frontImage;
@@ -33,9 +34,16 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// Material to use for rendering image. Material will be copied on use, image will be applied to shader's main texture.
 		/// </summary>
-		[SerializeField, Tooltip(" Material to use for rendering image. " +
+		[SerializeField, Tooltip("Material to use for rendering image. " +
 			"Material will be copied on use, image will be applied to shader's main texture.")]
 		private Material material;
+
+		[SerializeField, Tooltip("Distance between each plane and the center. Setting this number too small can create lighting errors.")]
+		private float Offset;
+
+
+		private HashSet<Object> deletionQueue = new HashSet<Object>();
+
 		/// <summary>
 		/// Image to display on front.
 		/// </summary>
@@ -115,16 +123,128 @@ namespace dninosores.UnityPlaneRenderer
 		private GameObject back;
 
 
+		#region UnityMethods
+
+#if UNITY_EDITOR
+		/// <summary>
+		/// Recalculates dimensions when editor values change.
+		/// </summary>
+		void OnValidate()
+		{
+			if (pixelsPerMeter <= 0)
+			{
+				pixelsPerMeter = float.Epsilon;
+			}
+			if (material != null)
+			{
+				EditorApplication.delayCall += RecalculateExistingFrontAndBack;
+			}
+		}
+
+
+		void Reset()
+		{
+			pixelsPerMeter = 100;
+			Offset = float.Epsilon;
+			CleanChildren(false);
+			Recalculate();
+		}
+
+		void Update()
+		{
+			CreateFrontAndBackIfNull();
+			SetLocalPosition(frontImage, front, Offset);
+			SetLocalPosition(backImage, back, -Offset);
+			CleanChildren();
+		}
+#endif
+
+		void OnDestroy()
+		{
+			SafeDestroy(front);
+			SafeDestroy(back);
+		}
+
+		void Start()
+		{
+#if UNITY_EDITOR
+			if (EditorApplication.isPlaying)
+			{
+#endif
+				front = null;
+				back = null;
+				CleanChildren(false);
+				Recalculate();
+#if UNITY_EDITOR
+			}
+#endif
+		}
+
+
+
+
+		#endregion
+
+
+
+		/// <summary>
+		/// Ensures that front and back aren't null and have been reset back to a default state with all their necessary components attached.
+		/// </summary>
+		private void ResetFrontAndBack()
+		{
+			if (front != null)
+			{
+				SafeDestroy(front);
+			}
+			front = CreateQuad("front", 180);
+			if (back != null)
+			{
+				SafeDestroy(back);
+			}
+			back = CreateQuad("back", 0);
+		}
+
+
+		private void CreateFrontAndBackIfNull()
+		{
+			bool shouldRecalculate = false;
+			if (front == null || back == null)
+			{
+				shouldRecalculate = true;
+			}
+
+			if (front == null)
+			{
+				front = CreateQuad("front", 180);
+				Debug.LogWarning("GameObject 'front' cannot be deleted because it is part of a PlaneRenderer!");
+			}
+			if (back == null)
+			{
+				back = CreateQuad("back", 0);
+				Debug.LogWarning("GameObject 'back' cannot be deleted because it is part of a PlaneRenderer!");
+			}
+
+			if (shouldRecalculate)
+			{
+				RecalculateExistingFrontAndBack();
+			}
+
+		}
+
+
 		/// <summary>
 		/// Creates a colliderless Quad with the given name as a child of this GameObject.
 		/// </summary>
-		private GameObject CreateQuad(string name)
+		private GameObject CreateQuad(string name, float rotation)
 		{
 			GameObject o = GameObject.CreatePrimitive(PrimitiveType.Quad);
 			o.name = name;
 			o.transform.SetParent(transform);
 			SafeDestroy(o.GetComponent<MeshCollider>());
 			o.GetComponent<MeshRenderer>().shadowCastingMode = castShadows;
+			o.transform.localRotation = Quaternion.identity;
+			o.transform.Rotate(new Vector3(0, rotation, 0));
+			o.transform.localPosition = new Vector3(0, 0, 0);
 			return o;
 		}
 
@@ -145,7 +265,7 @@ namespace dninosores.UnityPlaneRenderer
 		/// <summary>
 		/// Destroys all children of this GameObject that aren't the front or back quads.
 		/// </summary>
-		private void CleanChildren()
+		private void CleanChildren(bool showMessage = true)
 		{
 			foreach (Transform child in transform)
 			{
@@ -153,7 +273,15 @@ namespace dninosores.UnityPlaneRenderer
 					(front == null || child != front?.transform) &&
 					(back == null || child != back?.transform))
 				{
-					SafeDestroy(child?.gameObject);
+					if (child != null && child.gameObject != null && !deletionQueue.Contains(child.gameObject))
+					{
+						if (showMessage)
+						{
+							Debug.LogWarning("GameObject '" + child.gameObject.name + "' was destroyed because it was added as a child of " +
+								"a PlaneRenderer.\nIf an object has a PlaneRenderer component, its only children can be the 'front' and 'back' objects.");
+						}
+						SafeDestroy(child?.gameObject);
+					}
 				}
 			}
 		}
@@ -175,70 +303,56 @@ namespace dninosores.UnityPlaneRenderer
 		/// Recalculates the front and back quads.
 		/// </summary>
 		[ContextMenu("Recalculate")]
-		private void Recalculate()
+		public void Recalculate()
 		{
+			ResetFrontAndBack();
+			RecalculateExistingFrontAndBack();
 			CleanChildren();
-			if (material == null)
-			{
-				SafeDestroy(front);
-				SafeDestroy(back);
-			}
-			if (frontImage == null)
-			{
-				SafeDestroy(front);
-			}
-			if (backImage == null)
-			{
-				SafeDestroy(back);
-			}
-
-			if (front == null && frontImage != null)
-			{
-				front = CreateQuad("front");
-			}
-			else
-			{
-				Clean(front);
-			}
-
-			if (back == null && backImage != null)
-			{
-				back = CreateQuad("back");
-			}
-			else
-			{
-				Clean(back);
-			}
+		}
 
 
-			if (frontImage != null)
+		private void RecalculateExistingFrontAndBack()
+		{
+			if (front != null)
 			{
-				RecalculateDimensions(frontImage, front, false, 180);
+				if (frontImage != null)
+				{
+					front.SetActive(true);
+					RecalculateDimensions(frontImage, front, false, Offset);
+				}
+				else
+				{
+					front.SetActive(false);
+				}
 			}
-			if (backImage != null)
+			if (back != null)
 			{
-				RecalculateDimensions(backImage, back, mirrorBackImage, 0);
+				if (backImage != null && back != null)
+				{
+					back.SetActive(true);
+					RecalculateDimensions(backImage, back, mirrorBackImage, -Offset);
+				}
+				else
+				{
+					back.SetActive(false);
+				}
 			}
-
-
 		}
 
 
 		/// <summary>
 		/// Recalculates the dimensions of the front and back quads, assuming they already exist.
 		/// </summary>
-		private void RecalculateDimensions(Texture2D image, GameObject plane, bool flip, float rotation)
+		private void RecalculateDimensions(Texture2D image, GameObject plane, bool flip, float offset)
 		{
 			float width = image.width / pixelsPerMeter;
 			float height = image.height / pixelsPerMeter;
-			plane.transform.localRotation = Quaternion.Euler(new Vector3(0, 0, 0));
-			plane.transform.Rotate(new Vector3(0, rotation, 0));
 
 			plane.transform.localScale = new Vector3(width * (flip ? -1 : 1), height, 1);
 
 			SetTexture(plane, image);
 
-			plane.transform.localPosition = new Vector3(-width / 2 + anchorPoint.x * width, height / 2 - anchorPoint.y * height, OFFSET);
+			SetLocalPosition(image, plane, offset);
 			plane.GetComponent<MeshRenderer>().shadowCastingMode = castShadows;
 
 #if UNITY_EDITOR
@@ -249,31 +363,16 @@ namespace dninosores.UnityPlaneRenderer
 		}
 
 
-		/// <summary>
-		/// Recalculates dimensions when editor values change.
-		/// </summary>
-		void OnValidate()
+		private void SetLocalPosition(Texture2D image, GameObject plane, float offset)
 		{
-			if (pixelsPerMeter <= 0)
+			if (image != null && plane != null)
 			{
-				pixelsPerMeter = 0.001f;
-			}
-			if (material != null)
-			{
-				if (front != null && frontImage != null)
-				{
-					RecalculateDimensions(frontImage, front, false, 180);
-				}
-				if (back != null && backImage != null)
-				{
-					RecalculateDimensions(backImage, back, mirrorBackImage, 0);
-				}
-				if ((front == null && frontImage != null) || (back == null && backImage != null))
-				{
-					Recalculate();
-				}
+				float width = image.width / pixelsPerMeter;
+				float height = image.height / pixelsPerMeter;
+				plane.transform.localPosition = new Vector3(-width / 2 + anchorPoint.x * width, height / 2 - anchorPoint.y * height, offset);
 			}
 		}
+
 
 
 		/// <summary>
@@ -282,19 +381,48 @@ namespace dninosores.UnityPlaneRenderer
 		/// <param name="go"></param>
 		private void SafeDestroy(UnityEngine.Object go)
 		{
+			RemoveNullObjects(deletionQueue);
 			if (go == null)
 			{
 				return;
 			}
 #if UNITY_EDITOR
 			if (!EditorApplication.isPlaying)
+			{
+				deletionQueue.Add(go);
 				UnityEditor.EditorApplication.delayCall += () =>
 				{
+					deletionQueue.Remove(go);
 					DestroyImmediate(go, false);
 				};
+			}
 			else
+			{
 #endif
+				deletionQueue.Add(go);
 				Destroy(go);
+#if UNITY_EDITOR
+			}
+#endif
+		}
+
+
+		private void RemoveNullObjects(HashSet<Object> set)
+		{
+			List<Object> toremove = new List<Object>();
+			foreach (Object o in set)
+			{
+				if (!o)
+				{
+					toremove.Add(o);
+				}
+			}
+
+			foreach (Object o in toremove)
+			{
+				set.Remove(o);
+			}
+
 		}
 
 	}
