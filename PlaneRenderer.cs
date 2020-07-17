@@ -152,10 +152,13 @@ namespace dninosores.UnityPlaneRenderer
 
 		void Update()
 		{
-			CreateFrontAndBackIfNull();
-			SetLocalPosition(frontImage, front, Offset);
-			SetLocalPosition(backImage, back, -Offset);
-			CleanChildren();
+			if (!EditorApplication.isPlaying)
+			{
+				CreateFrontAndBackIfNull();
+				SetLocalPosition(frontImage, front, Offset);
+				SetLocalPosition(backImage, back, -Offset);
+				CleanChildren();
+			}
 		}
 #endif
 
@@ -279,8 +282,14 @@ namespace dninosores.UnityPlaneRenderer
 						{
 							Debug.LogWarning("GameObject '" + child.gameObject.name + "' was destroyed because it was added as a child of " +
 								"a PlaneRenderer.\nIf an object has a PlaneRenderer component, its only children can be the 'front' and 'back' objects.");
+#if UNITY_EDITOR
+							Undo.DestroyObjectImmediate(child.gameObject);
+#endif
 						}
-						SafeDestroy(child?.gameObject);
+						if (child != null && child.gameObject != null)
+						{
+							SafeDestroy(child.gameObject);
+						}
 					}
 				}
 			}
