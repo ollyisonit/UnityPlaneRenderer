@@ -1,12 +1,12 @@
 ﻿#pragma warning disable 0649
 
-using dninosores.UnityEditorAttributes;
+using ollyisonit.UnityEditorAttributes;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace dninosores.UnityPlaneRenderer
+namespace ollyisonit.UnityPlaneRenderer
 {
 	/// <summary>
 	/// Renders a two-dimensional image to a plane using given material as base.
