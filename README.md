@@ -1,5 +1,5 @@
 # Unity Plane Renderer
-Unity component that simplifies rendering images in 3D space.
+Unity component that simplifies rendering image planes in 3D space.
 
 ![](readme-assets/UnityPlaneRendererIcon.jpg)
 
