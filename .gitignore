@@ -14,7 +14,7 @@
 !/[Aa]ssets/**/*.meta
 
 README.md.meta
-LICENSE.md.meta
+LICENSE.txt.meta
 readme-assets.meta
 readme-assets/*.meta
 
