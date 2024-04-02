@@ -22,7 +22,7 @@ Attach the PlaneRenderer script to the object that you want to add an image to. 
   - `Cast Shadows`: How should shadows be handled?
   
 ## Installation
-[Download](https://github.com/ollyisonit/UnityAnimationModifiers/releases/latest) or clone this repository and add it to your Unity project assets folder.
+[Download](https://github.com/ollyisonit/UnityPlaneRenderer/releases/latest) or clone this repository and add it to your Unity project assets folder.
 
 ## Dependencies
 This library requires that you have the [UnityEditorAttributes](https://github.com/ollyisonit/UnityEditorAttributes) library installed.
